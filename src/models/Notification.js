@@ -1,0 +1,43 @@
+const mongoose = require('mongoose');
+
+const notificationSchema = new mongoose.Schema({
+    title: {
+        type: String,
+        required: true,
+        trim: true,
+    },
+    message: {
+        type: String,
+        required: true,
+    },
+    type: {
+        type: String,
+        enum: ['info', 'success', 'warning', 'error', 'promotional'],
+        default: 'info',
+    },
+    targetAudience: {
+        type: String,
+        enum: ['all', 'customers', 'providers'],
+        default: 'all',
+    },
+    isActive: {
+        type: Boolean,
+        default: true,
+    },
+    scheduledFor: {
+        type: Date,
+        default: null,
+    },
+    isSent: {
+        type: Boolean,
+        default: false,
+    },
+    sentAt: {
+        type: Date,
+        default: null,
+    },
+}, {
+    timestamps: true,
+});
+
+module.exports = mongoose.model('Notification', notificationSchema);
