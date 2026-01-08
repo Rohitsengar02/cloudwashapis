@@ -439,6 +439,16 @@ const cancelOrder = async (req, res) => {
         // Sync to Firebase
         await syncOrderToFirebase(order);
 
+        // Notify User
+        await sendNotification(
+            req,
+            order.userId,
+            'Order Cancelled',
+            `Your order #${order.orderNumber || order._id} has been cancelled.`,
+            'order_update',
+            order._id
+        );
+
         res.json({
             success: true,
             message: 'Order cancelled successfully',
@@ -475,6 +485,49 @@ const getOrdersByUserId = async (req, res) => {
     }
 };
 
+// Get booked slots for a date
+const getBookedSlots = async (req, res) => {
+    try {
+        const { date } = req.query;
+
+        if (!date) {
+            return res.status(400).json({
+                success: false,
+                message: 'Date is required'
+            });
+        }
+
+        const queryDate = new Date(date);
+        const startOfDay = new Date(queryDate.setHours(0, 0, 0, 0));
+        const endOfDay = new Date(queryDate.setHours(23, 59, 59, 999));
+
+        const orders = await Order.find({
+            scheduledDate: {
+                $gte: startOfDay,
+                $lte: endOfDay
+            },
+            status: { $ne: 'cancelled' }
+        }).select('scheduledDate status');
+
+        const slots = orders.map(order => ({
+            time: order.scheduledDate,
+            status: order.status
+        }));
+
+        res.json({
+            success: true,
+            slots
+        });
+    } catch (error) {
+        console.error('Get Slots Error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch slots',
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
     createOrder,
     getMyOrders,
@@ -482,5 +535,6 @@ module.exports = {
     verifyOTP,
     updateOrderStatus,
     cancelOrder,
-    getOrdersByUserId
+    getOrdersByUserId,
+    getBookedSlots
 };

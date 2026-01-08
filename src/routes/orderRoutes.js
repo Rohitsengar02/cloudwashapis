@@ -7,11 +7,13 @@ const {
     verifyOTP,
     updateOrderStatus,
     cancelOrder,
-    getOrdersByUserId
+    getOrdersByUserId,
+    getBookedSlots
 } = require('../controllers/orderController');
 const { protectUser } = require('../middleware/authMiddleware');
 
 // All order routes require authentication
+router.get('/slots', protectUser, getBookedSlots); // Must be before /:id to avoid conflict
 router.post('/', protectUser, createOrder);
 router.get('/', protectUser, getMyOrders);
 router.get('/user/:userId', getOrdersByUserId); // Admin route

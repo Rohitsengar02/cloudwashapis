@@ -1,4 +1,6 @@
 const Notification = require('../models/Notification');
+const User = require('../models/User');
+const admin = require('../config/firebase');
 
 // Internal helper to send notification
 const sendNotification = async (req, userId, title, message, type, orderId) => {
@@ -14,12 +16,37 @@ const sendNotification = async (req, userId, title, message, type, orderId) => {
             sentAt: new Date()
         });
 
-        // Emit via Socket.IO
+        // 1. Emit via Socket.IO
         if (req.io) {
             // Emitting to room named by userId
             req.io.to(userId.toString()).emit('notification', notification);
-            console.log(`Notification sent to ${userId}: ${title}`);
+            console.log(`📡 Socket Notification sent to ${userId}: ${title}`);
         }
+
+        // 2. Sync to Firebase Firestore for real-time mobile updates
+        try {
+            const user = await User.findById(userId);
+            if (user && user.firebaseUid && admin.firestore) {
+                await admin.firestore()
+                    .collection('notifications')
+                    .doc(notification._id.toString())
+                    .set({
+                        userId: user.firebaseUid,
+                        mongoUserId: userId.toString(),
+                        title,
+                        message,
+                        type,
+                        orderId: orderId ? orderId.toString() : null,
+                        isRead: false,
+                        createdAt: notification.createdAt.toISOString(),
+                        source: 'system'
+                    });
+                console.log(`🔥 Firebase Notification synced for ${user.firebaseUid}`);
+            }
+        } catch (firebaseError) {
+            console.error("Firebase Sync Error:", firebaseError.message);
+        }
+
     } catch (error) {
         console.error("Notification Error:", error);
     }
